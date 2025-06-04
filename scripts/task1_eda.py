@@ -95,107 +95,113 @@ def analyze_text(df, text_column='headline'):
 
 def analyze_time_series(df, date_column='date'):
     """Analyze time series patterns in the data."""
-    print("\n=== Time Series Analysis ===")
-    
-    # Ensure date is datetime
-    df[date_column] = pd.to_datetime(df[date_column])
-    
-    # Set date as index for resampling
-    df.set_index(date_column, inplace=True)
-    
-    # Resample by day and count articles
-    daily_counts = df.resample('D').size()
-    
-    # Plot publication frequency over time
-    plt.figure(figsize=(14, 6))
-    daily_counts.plot()
-    plt.title('Number of Articles Published Daily')
-    plt.xlabel('Date')
-    plt.ylabel('Number of Articles')
-    plt.grid(True)
-    plt.savefig('../output/eda_plots/daily_publication_frequency.png')
-    plt.close()
-    
-    # Analyze by day of week
-    df['day_of_week'] = df.index.day_name()
-    
-    # Count by day of week
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    day_counts = df['day_of_week'].value_counts().reindex(day_order)
-    
-    # Plot by day of week
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=day_counts.index, y=day_counts.values, order=day_order)
-    plt.title('Number of Articles by Day of Week')
-    plt.xlabel('Day of Week')
-    plt.ylabel('Number of Articles')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig('../output/eda_plots/publication_by_weekday.png')
-    plt.close()
-    
-    # Reset index for further analysis
-    df.reset_index(inplace=True)
+    if date_column in df.columns:
+        print("\n=== Time Series Analysis ===")
+        
+        # Ensure date is datetime - handle multiple date formats and timezones
+        df[date_column] = pd.to_datetime(df[date_column], format='mixed', utc=True).dt.tz_convert(None)
+        
+        # Set date as index for resampling
+        df.set_index(date_column, inplace=True)
+        
+        # Resample by day and count articles
+        daily_counts = df.resample('D').size()
+        
+        # Plot publication frequency over time
+        plt.figure(figsize=(14, 6))
+        daily_counts.plot()
+        plt.title('Number of Articles Published Daily')
+        plt.xlabel('Date')
+        plt.ylabel('Number of Articles')
+        plt.grid(True)
+        plt.savefig('../output/eda_plots/daily_publication_frequency.png')
+        plt.close()
+        
+        # Analyze by day of week
+        df['day_of_week'] = df.index.day_name()
+        
+        # Count by day of week
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_counts = df['day_of_week'].value_counts().reindex(day_order)
+        
+        # Plot by day of week
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=day_counts.index, y=day_counts.values, order=day_order)
+        plt.title('Number of Articles by Day of Week')
+        plt.xlabel('Day of Week')
+        plt.ylabel('Number of Articles')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig('../output/eda_plots/publication_by_weekday.png')
+        plt.close()
+        
+        # Reset index for further analysis
+        df.reset_index(inplace=True)
+    else:
+        print("\nSkipping time series analysis - 'date' column not found")
 
 def analyze_publishers(df, publisher_column='publisher'):
     """Analyze publisher information and patterns."""
-    print("\n=== Publisher Analysis ===")
-    
-    # Count articles per publisher
-    publisher_counts = df[publisher_column].value_counts().reset_index()
-    publisher_counts.columns = ['publisher', 'article_count']
-    
-    print(f"\nTotal unique publishers: {len(publisher_counts)}")
-    print("\nTop 10 publishers by article count:")
-    print(publisher_counts.head(10).to_string(index=False))
-    
-    # Plot top publishers
-    plt.figure(figsize=(12, 6))
-    sns.barplot(
-        x='article_count', 
-        y='publisher', 
-        data=publisher_counts.head(20),
-        palette='viridis'
-    )
-    plt.title('Top 20 Publishers by Number of Articles')
-    plt.xlabel('Number of Articles')
-    plt.ylabel('Publisher')
-    plt.tight_layout()
-    plt.savefig('../output/eda_plots/top_publishers.png')
-    plt.close()
-    
-    # Extract domains if publisher is email
-    if df[publisher_column].str.contains('@').any():
-        print("\nPublisher email domains found. Extracting domains...")
-        df['publisher_domain'] = df[publisher_column].str.extract(r'@([\w.-]+)')
-        domain_counts = df['publisher_domain'].value_counts().reset_index()
-        domain_counts.columns = ['domain', 'count']
+    if publisher_column in df.columns:
+        print("\n=== Publisher Analysis ===")
         
-        print("\nTop 10 publisher domains:")
-        print(domain_counts.head(10).to_string(index=False))
+        # Count articles per publisher
+        publisher_counts = df[publisher_column].value_counts().reset_index()
+        publisher_counts.columns = ['publisher', 'article_count']
         
-        # Plot top domains
+        print(f"\nTotal unique publishers: {len(publisher_counts)}")
+        print("\nTop 10 publishers by article count:")
+        print(publisher_counts.head(10).to_string(index=False))
+        
+        # Plot top publishers
         plt.figure(figsize=(12, 6))
         sns.barplot(
-            x='count', 
-            y='domain', 
-            data=domain_counts.head(20),
+            x='article_count', 
+            y='publisher', 
+            data=publisher_counts.head(20),
             palette='viridis'
         )
-        plt.title('Top 20 Publisher Domains')
+        plt.title('Top 20 Publishers by Number of Articles')
         plt.xlabel('Number of Articles')
-        plt.ylabel('Domain')
+        plt.ylabel('Publisher')
         plt.tight_layout()
-        plt.savefig('../output/eda_plots/top_publisher_domains.png')
+        plt.savefig('../output/eda_plots/top_publishers.png')
         plt.close()
+        
+        # Extract domains if publisher is email
+        if df[publisher_column].str.contains('@').any():
+            print("\nPublisher email domains found. Extracting domains...")
+            df['publisher_domain'] = df[publisher_column].str.extract(r'@([\w.-]+)')
+            domain_counts = df['publisher_domain'].value_counts().reset_index()
+            domain_counts.columns = ['domain', 'count']
+            
+            print("\nTop 10 publisher domains:")
+            print(domain_counts.head(10).to_string(index=False))
+            
+            # Plot top domains
+            plt.figure(figsize=(12, 6))
+            sns.barplot(
+                x='count', 
+                y='domain', 
+                data=domain_counts.head(20),
+                palette='viridis'
+            )
+            plt.title('Top 20 Publisher Domains')
+            plt.xlabel('Number of Articles')
+            plt.ylabel('Domain')
+            plt.tight_layout()
+            plt.savefig('../output/eda_plots/top_publisher_domains.png')
+            plt.close()
+    else:
+        print("\nSkipping publisher analysis - 'publisher' column not found")
 
 def main():
     # Download required NLTK data
     nltk.download('stopwords', quiet=True)
     nltk.download('punkt', quiet=True)
     
-    # File path
-    file_path = '../raw_analyst_ratings (1).csv'
+    # File path - using absolute path to ensure it works from any directory
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'raw_analyst_ratings (1).csv'))
     
     # Load data
     print("Loading data...")
@@ -204,8 +210,16 @@ def main():
     if df is not None:
         # Perform analyses
         basic_data_analysis(df)
-        analyze_text(df, 'headline')
-        analyze_text(df, 'summary')
+        
+        # Analyze text data for available columns
+        text_columns = ['headline', 'summary']
+        for col in text_columns:
+            if col in df.columns:
+                print(f"\n=== Text Analysis ({col}) ===")
+                analyze_text(df, col)
+            else:
+                print(f"\nSkipping {col} analysis - column not found in data")
+        
         analyze_time_series(df)
         analyze_publishers(df)
         
